@@ -36,12 +36,12 @@ class GenerateFiles extends Command
     public function handle(): void
     {
         $names = $this->argument('names');
-
+    
         foreach ($names as $name) {
             $this->info("Generating files for {$name}...");
-
-            // File paths and names
+    
             $files = [
+                app_path("Services/Interface/I{$name}Service.php"), 
                 app_path("Services/{$name}Service.php"),
                 app_path("Repositories/Interface/I{$name}.php"),
                 app_path("Repositories/Implementation/{$name}Repository.php"),
@@ -51,14 +51,13 @@ class GenerateFiles extends Command
                 app_path("Http/Requests/Store{$name}Request.php"),
                 app_path("Http/Requests/Update{$name}Request.php"),
             ];
-
+    
             foreach ($files as $file) {
                 $this->createFile($file, $name);
             }
-
-            // Update AppServiceProvider
+    
             $this->updateAppServiceProvider($name);
-
+    
             $this->info("Files for {$name} generated successfully.");
         }
     }
@@ -90,11 +89,14 @@ class GenerateFiles extends Command
     protected function determineFileType($filePath)
     {
         if (str_contains($filePath, 'Interface')) {
+            if (str_contains($filePath, 'Services')) {
+                return 'service-interface';
+            }
             return 'repository-interface';
         } elseif (str_contains($filePath, 'Implementation')) {
             return 'repository';
-        } elseif (str_contains($filePath, 'Service')) {
-            return 'service-interface';
+        } elseif (str_contains($filePath, 'Service.php') && !str_contains($filePath, 'Interface')) {
+            return 'service';
         } elseif (str_contains($filePath, 'Controller')) {
             return 'controller';
         } elseif (str_contains($filePath, 'Resource')) {
@@ -106,8 +108,8 @@ class GenerateFiles extends Command
         } elseif (str_contains($filePath, 'Update')) {
             return 'update-request';
         }
-    
-        return ''; // Default case for unknown file types
+
+        return ''; 
     }
     
     protected function updateAppServiceProvider($name)
@@ -118,36 +120,41 @@ class GenerateFiles extends Command
             $this->error("AppServiceProvider not found.");
             return;
         }
-
+    
         $content = $this->fileService->get($appServiceProviderPath);
-
-        // Check if the binding already exists
-        $bindingCode = "\$this->app->bind(I{$name}::class, {$name}Repository::class);";
-        $useStatement = "use App\Repositories\Interface\I{$name};\nuse App\Repositories\Implementation\{$name}Repository;";
-
-        // Add use statement if not exists
-        if (!str_contains($content, $useStatement)) {
+    
+        // Repository binding
+        $repoBinding = "\$this->app->bind(I{$name}::class, {$name}Repository::class);";
+        $repoUseStatements = "use App\Repositories\Interface\I{$name};\nuse App\Repositories\Implementation\\{$name}Repository;";
+    
+        // Service binding
+        $serviceBinding = "\$this->app->bind(I{$name}Service::class, {$name}Service::class);";
+        $serviceUseStatements = "use App\Services\Interface\I{$name}Service;\nuse App\Services\\{$name}Service;";
+    
+        // Add use statements if not exists
+        $useStatements = $repoUseStatements . "\n" . $serviceUseStatements;
+        if (!str_contains($content, $repoUseStatements)) {
             $content = str_replace(
                 'use Illuminate\Support\ServiceProvider;',
-                "use Illuminate\Support\ServiceProvider;\n{$useStatement}",
+                "use Illuminate\Support\ServiceProvider;\n{$useStatements}",
                 $content
             );
         }
-
-        // Add binding if not exists
-        if (!str_contains($content, $bindingCode)) {
+    
+        // Add bindings if not exists
+        $bindings = $repoBinding . "\n        " . $serviceBinding;
+        if (!str_contains($content, $repoBinding)) {
             $content = preg_replace(
-                '/public function boot\(\)[\s\S]*?{/',
-                "public function boot()\n    {\n        {$bindingCode}",
+                '/public function register\(\)[\s\S]*?{/',
+                "public function register()\n    {\n        {$bindings}",
                 $content
             );
         }
-
+    
         $this->fileService->put($appServiceProviderPath, $content);
-        $this->info("Updated AppServiceProvider with {$name} repository binding.");
+        $this->info("Updated AppServiceProvider with {$name} repository and service bindings.");
     }
-
-
+    
     protected function getStubContent($type, $className)
     {
         switch ($type) {
@@ -168,7 +175,7 @@ class GenerateFiles extends Command
     }
     
     EOT;
-            
+    
             case 'repository':
                 return <<<EOT
     <?php
@@ -182,37 +189,33 @@ class GenerateFiles extends Command
     {
         public function get(\$limit)
         {
-                    return {$className}::paginate(\$limit);
-
+            return {$className}::paginate(\$limit);
         }
     
         public function show(\$model)
         {
-        return {$className}::find(\$model->id);
+            return {$className}::find(\$model->id);
         }
     
         public function save(\$model)
         {
-        return  {$className}::create(\$model);
+            return {$className}::create(\$model);
         }
     
         public function delete(\$model)
         {
-                return \$model->delete(); 
+            return \$model->delete();
         }
     
         public function search(\$request, \$limit)
         {
-         return  {$className}::whereAny([],"LIKE","%".\$request."%")->paginate(\$limit);    
+            return {$className}::whereAny([], "LIKE", "%".\$request."%")->paginate(\$limit);
         }
-
-         public function update(\$model)
-    {
-        return \$model->save();
-    }
-
-
-
+    
+        public function update(\$model)
+        {
+            return \$model->save();
+        }
     }
     
     EOT;
@@ -221,23 +224,64 @@ class GenerateFiles extends Command
                 return <<<EOT
     <?php
     
+    namespace App\Services\Interface;
+    
+    interface I{$className}Service
+    {
+        public function getAll();
+        public function getById(\$id);
+        public function create(array \$data);
+        public function update(\$id, array \$data);
+        public function delete(\$id);
+    }
+    
+    EOT;
+    
+            case 'service':
+                return <<<EOT
+    <?php
+    
     namespace App\Services;
     
-    use App\Repositories\Interface\\I{$className};
+    use App\Services\Interface\I{$className}Service;
+    use App\Repositories\Interface\I{$className};
     use App\Traits\ResponseTrait;
     use Illuminate\Support\Facades\Log;
     use App\Http\Resources\\{$className}Resource;
     
-    class {$className}Service
+    class {$className}Service implements I{$className}Service
     {
-        private I{$className} \${$className}repo;
+        private I{$className} \${$className}Repo;
     
-        public function __construct(I{$className} \${$className}repo)
+        public function __construct(I{$className} \${$className}Repo)
         {
-            \$this->{$className}repo = \${$className}repo;
+            \$this->{$className}Repo = \${$className}Repo;
         }
     
-        // Add methods to use the repository here
+        public function getAll()
+        {
+            // Implement method
+        }
+    
+        public function getById(\$id)
+        {
+            // Implement method
+        }
+    
+        public function create(array \$data)
+        {
+            // Implement method
+        }
+    
+        public function update(\$id, array \$data)
+        {
+            // Implement method
+        }
+    
+        public function delete(\$id)
+        {
+            // Implement method
+        }
     }
     
     EOT;
@@ -255,107 +299,127 @@ class GenerateFiles extends Command
     
     class {$className}Controller extends Controller
     {
-        private {$className}Service \${$className}service;
+        private {$className}Service \${$className}Service;
     
-        public function __construct({$className}Service \${$className}service)
+        public function __construct({$className}Service \${$className}Service)
         {
-            \$this->{$className}service = \${$className}service;
+            \$this->{$className}Service = \${$className}Service;
         }
     
-        // Controller methods to call the service methods here
+        public function index()
+        {
+            return \$this->{$className}Service->getAll();
+        }
+    
+        public function show(\$id)
+        {
+            return \$this->{$className}Service->getById(\$id);
+        }
+    
+        public function store(Request \$request)
+        {
+            return \$this->{$className}Service->create(\$request->all());
+        }
+    
+        public function update(Request \$request, \$id)
+        {
+            return \$this->{$className}Service->update(\$id, \$request->all());
+        }
+    
+        public function destroy(\$id)
+        {
+            return \$this->{$className}Service->delete(\$id);
+        }
     }
     
     EOT;
+    
             case 'resource':
                 return <<<EOT
     <?php
+    
     namespace App\Http\Resources;
-
+    
     use Illuminate\Http\Request;
     use Illuminate\Http\Resources\Json\JsonResource;
-
+    
     class {$className}Resource extends JsonResource
     {
-     public function toArray(Request \$request): array
-    {
-       return [
-        ];
-    }
-    
+        public function toArray(Request \$request): array
+        {
+            return parent::toArray(\$request);
+        }
     }
     
     EOT;
+    
             case 'model':
                 return <<<EOT
+    <?php
     
-     <?php
-
     namespace App\Models;
-
+    
     use Illuminate\Database\Eloquent\Factories\HasFactory;
     use Illuminate\Database\Eloquent\Model;
-
+    
     class {$className} extends Model
-        {
+    {
+        use HasFactory;
+    
         protected \$fillable = [];
-
-    
-     }
-
-    
     }
     
     EOT;
-    case 'store-request':
-        return <<<EOT
-<?php
-
-namespace App\Http\Requests;
-
-use Illuminate\Foundation\Http\FormRequest;
-
-class Store{$className}Request extends FormRequest
-{
-public function authorize()
-{
-return true;
-}
-
-public function rules()
-{
-return [
-
-];
-}
-}
-EOT;
     
-    case 'update-request':
-        return <<<EOT
-<?php
-
-namespace App\Http\Requests;
-
-use App\Models\\{$className};
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Foundation\Http\FormRequest;
-
-class Update{$className}Request extends FormRequest
-{
-public function authorize()
-{
-return true;
-}
-
-public function rules()
-{
-return [
-   
-];
-}
-}
-EOT;
+            case 'store-request':
+                return <<<EOT
+    <?php
+    
+    namespace App\Http\Requests;
+    
+    use Illuminate\Foundation\Http\FormRequest;
+    
+    class Store{$className}Request extends FormRequest
+    {
+        public function authorize()
+        {
+            return true;
+        }
+    
+        public function rules()
+        {
+            return [
+                // Add validation rules
+            ];
+        }
+    }
+    
+    EOT;
+    
+            case 'update-request':
+                return <<<EOT
+    <?php
+    
+    namespace App\Http\Requests;
+    
+    use Illuminate\Foundation\Http\FormRequest;
+    
+    class Update{$className}Request extends FormRequest
+    {
+        public function authorize()
+        {
+            return true;
+        }
+    
+        public function rules()
+        {
+            return [
+                // Add validation rules
+            ];
+        }
+    }
+    
+    EOT;
     
             default:
                 return '';
