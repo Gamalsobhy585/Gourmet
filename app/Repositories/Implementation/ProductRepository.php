@@ -1,15 +1,25 @@
 <?php
-
 namespace App\Repositories\Implementation;
-
 use App\Models\Product;
 use App\Repositories\Interface\IProduct;
-
 class ProductRepository implements IProduct
 {
-    public function get($filter, $query, $limit)
+    public function get($filter, $query, $limit, $sort_by = null, $sort_direction = 'desc')
     {
-        return Product::select([
+        $sort_direction = in_array(strtolower($sort_direction), ['asc', 'desc']) ? strtolower($sort_direction) : 'desc';
+        $sortMap = [
+            'category' => 'categories.id',
+            'sku' => 'products.SKU',
+            'price' => 'products.price',
+            'created_date' => 'products.created_at',
+            'default' => 'products.created_at'
+        ];
+        $sortColumn = $sortMap['default'];
+        if (isset($sort_by) && array_key_exists($sort_by, $sortMap)) {
+            $sortColumn = $sortMap[$sort_by];
+        }
+        return Product::with('category') 
+            ->select([
                 'products.id',
                 'products.SKU',
                 'products.name',
@@ -17,8 +27,7 @@ class ProductRepository implements IProduct
                 'categories.name as category_name',
                 'products.price',
                 'products.created_at',
-                'products.category_id'  
-
+                'products.category_id'
             ])
             ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
             ->when(isset($filter['category']), function ($q) use ($filter) {
@@ -51,10 +60,9 @@ class ProductRepository implements IProduct
                               ->orWhere('products.description', 'like', '%' . $query . '%');
                 });
             })
-            ->orderBy('products.created_at', 'desc')
+            ->orderBy($sortColumn, $sort_direction)
             ->paginate($limit);
     }
-
     public function show($model)
     {
         return Product::with('category')
@@ -71,24 +79,18 @@ class ProductRepository implements IProduct
             ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
             ->find($model->id);
     }
-
-    
     public function save($model)
     {
         return Product::create($model);
     }
-
     public function delete($model)
     {
         return $model->delete();
     }
-
-
     public function update($model)
     {
         return $model->save();
     }
-
     public function findById($id)
     {
         return Product::findOrFail($id);

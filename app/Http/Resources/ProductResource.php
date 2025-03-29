@@ -14,16 +14,17 @@ class ProductResource extends JsonResource
             'SKU' => $this->SKU,
             'name' => $this->name,
             'description' => $this->description,
+         
+            'price' => $this->price,
+            'price_in_store_b' => $this->price_in_store_b,
+            'created_at' => $this->created_at ? $this->created_at->format('Y-m-d H:i:s') : null,
+            'updated_at' => $this->updated_at ? $this->updated_at->format('Y-m-d H:i:s') : null,
             'category' => $this->whenLoaded('category', function () {
                 return [
                     'id' => $this->category->id,
                     'name' => $this->category->name,
                 ];
             }),
-            'price' => $this->price,
-            'price_in_store_b' => $this->price_in_store_b,
-            'created_at' => $this->created_at ? $this->created_at->format('Y-m-d H:i:s') : null,
-            'updated_at' => $this->updated_at ? $this->updated_at->format('Y-m-d H:i:s') : null,
 
         ];
     }

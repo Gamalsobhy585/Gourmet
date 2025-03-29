@@ -22,6 +22,9 @@ class ProductService implements IProductService
     public function getProducts($request, $limit)
     {
         $query = $request->input('query', '');
+        $sort_by = $request->input('sort_by');
+        $sort_direction = $request->input('sort_direction', 'desc');
+        
         $filters = [
             'category' => $request->input('category'),
             'sku' => $request->input('sku'),
@@ -31,7 +34,7 @@ class ProductService implements IProductService
             'created_date_range' => $request->input('created_date_range'),
         ];
         
-        $products = $this->ProductRepo->get($filters, $query, $limit);
+        $products = $this->ProductRepo->get($filters, $query, $limit, $sort_by, $sort_direction);
     
         return $this->returnDataWithPagination(
             __('messages.product.index_success'),
