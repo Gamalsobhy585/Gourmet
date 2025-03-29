@@ -54,7 +54,7 @@ class ProductService implements IProductService
                 'description' => $request->input('description'),
                 'price' => $request->input('price'),
                 'category_id' => $request->input('category_id'),
-                'SKU' => $request->input('SKU'),
+                'sku' => $request->input('sku'),
 
             ];
 

@@ -9,7 +9,7 @@ class ProductRepository implements IProduct
         $sort_direction = in_array(strtolower($sort_direction), ['asc', 'desc']) ? strtolower($sort_direction) : 'desc';
         $sortMap = [
             'category' => 'categories.id',
-            'sku' => 'products.SKU',
+            'sku' => 'products.sku',
             'price' => 'products.price',
             'created_date' => 'products.created_at',
             'default' => 'products.created_at'
@@ -21,7 +21,7 @@ class ProductRepository implements IProduct
         return Product::with('category') 
             ->select([
                 'products.id',
-                'products.SKU',
+                'products.sku',
                 'products.name',
                 'products.description',
                 'categories.name as category_name',
@@ -34,7 +34,7 @@ class ProductRepository implements IProduct
                 $q->where('categories.name', 'like', '%' . $filter['category'] . '%');
             })
             ->when(isset($filter['sku']), function ($q) use ($filter) {
-                $q->where('products.SKU', 'like', '%' . $filter['sku'] . '%');
+                $q->where('products.sku', 'like', '%' . $filter['sku'] . '%');
             })
             ->when(isset($filter['price']), function ($q) use ($filter) {
                 $q->where('products.price', $filter['price']);
@@ -68,7 +68,7 @@ class ProductRepository implements IProduct
         return Product::with('category')
             ->select([
                 'products.id',
-                'products.SKU',
+                'products.sku',
                 'products.name',
                 'products.description',
                 'categories.name as category_name',

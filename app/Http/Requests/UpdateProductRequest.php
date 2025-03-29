@@ -18,7 +18,7 @@ class UpdateProductRequest extends FormRequest
             'description' => 'nullable|string',
             'price' => 'sometimes|numeric|min:0',
             'category_id' => 'sometimes|exists:categories,id',
-            'SKU' => 'sometimes|string|max:100|unique:products,SKU,'.$this->product->id,
+            'sku' => 'sometimes|string|max:100|unique:products,sku,'.$this->product->id,
         ];
     }
 
@@ -30,7 +30,7 @@ class UpdateProductRequest extends FormRequest
             'price.numeric' => 'The price must be a number.',
             'price.min' => 'The price cannot be negative.',
             'category_id.exists' => 'The selected category does not exist.',
-            'SKU.unique' => 'This SKU already exists.',
+            'sku.unique' => 'This sku already exists.',
         ];
     }
 }

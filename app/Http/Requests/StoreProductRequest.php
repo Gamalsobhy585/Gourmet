@@ -18,7 +18,7 @@ class StoreProductRequest extends FormRequest
             'description' => 'nullable|string',
             'price' => 'required|numeric|min:0',
             'category_id' => 'required|exists:categories,id',
-            'SKU' => 'required|string|max:100|unique:products,SKU',
+            'sku' => 'required|string|max:100|unique:products,sku',
         ];
     }
 
@@ -31,8 +31,8 @@ class StoreProductRequest extends FormRequest
             'price.min' => 'The price cannot be negative.',
             'category_id.required' => 'A category must be selected.',
             'category_id.exists' => 'The selected category does not exist.',
-            'SKU.required' => 'The SKU is required.',
-            'SKU.unique' => 'This SKU already exists.',
+            'sku.required' => 'The sku is required.',
+            'sku.unique' => 'This sku already exists.',
         ];
     }
 }
