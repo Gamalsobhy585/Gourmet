@@ -23,7 +23,7 @@ class ProductService implements IProductService
     {
         $query = $request->input('query', '');
         $sort_by = $request->input('sort_by');
-        $sort_direction = $request->input('sort_direction', 'desc');
+        $sort_direction = $request->input('sort_direction', 'asc');
         
         $filters = [
             'category' => $request->input('category'),

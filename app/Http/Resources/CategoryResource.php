@@ -13,15 +13,9 @@ class CategoryResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'B_percentage' => $this->B_percentage,
-            'products_count' => $this->whenLoaded('products', function() {
-                return $this->products->count();
-            }),
             'created_at' => $this->created_at->format('Y-m-d H:i:s'),
             'updated_at' => $this->updated_at->format('Y-m-d H:i:s'),
-            'links' => [
-                'self' => route('categories.show', $this->id),
-                'products' => route('categories.products.index', $this->id),
-            ]
+           
         ];
     }
 }
