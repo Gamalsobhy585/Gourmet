@@ -2,10 +2,9 @@
 
 namespace App\Repositories\Interface;
 
-interface IProduct
+interface ICategory
 {
-    public function get($filter,$query,$limit);
-    public function show($model);
+    public function get($limit);
     public function save($model);
     public function delete($model);
     public function update($model);
