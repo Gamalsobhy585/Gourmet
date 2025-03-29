@@ -17,7 +17,6 @@ class UpdateProductRequest extends FormRequest
             'name' => 'sometimes|string|max:255',
             'description' => 'nullable|string',
             'price' => 'sometimes|numeric|min:0',
-            'price_in_store_b' => 'nullable|numeric|min:0',
             'category_id' => 'sometimes|exists:categories,id',
             'SKU' => 'sometimes|string|max:100|unique:products,SKU,'.$this->product->id,
         ];
