@@ -33,7 +33,7 @@ class ProductService implements IProductService
         
         $products = $this->ProductRepo->get($filters, $query, $limit);
     
-        return $this->returnData(
+        return $this->returnDataWithPagination(
             __('messages.product.index_success'),
             200,
             ProductResource::collection($products)

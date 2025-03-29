@@ -16,8 +16,9 @@ class ProductRepository implements IProduct
                 'products.description',
                 'categories.name as category_name',
                 'products.price',
-                'products.price_in_store_b',
-                'products.created_at'
+                'products.created_at',
+                'products.category_id'  
+
             ])
             ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
             ->when(isset($filter['category']), function ($q) use ($filter) {

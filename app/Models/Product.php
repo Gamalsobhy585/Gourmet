@@ -16,14 +16,19 @@ class Product extends Model
         'description',
         'category_id'
     ];
+    protected $appends = ['price_for_store_b'];
+
 
     public function category()
     {
         return $this->belongsTo(Category::class);
     }
 
-    public function getPriceForStoreBAttribute()
+   
+    public function getPriceInStoreBAttribute()
     {
-        return $this->price * (1 + $this->category->B_percentage / 100);
+        $price = $this->price * (1 + $this->category->B_percentage / 100);
+        return round($price, 2);  
     }
+    
 }
