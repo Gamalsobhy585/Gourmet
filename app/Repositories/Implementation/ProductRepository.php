@@ -7,17 +7,71 @@ use App\Repositories\Interface\IProduct;
 
 class ProductRepository implements IProduct
 {
-    public function get($filter,$query,$limit)
+    public function get($filter, $query, $limit)
     {
-        return Product::where('filter', $filter)
-        ->paginate($limit);
+        return Product::select([
+                'products.id',
+                'products.SKU',
+                'products.name',
+                'products.description',
+                'categories.name as category_name',
+                'products.price',
+                'products.price_in_store_b',
+                'products.created_at'
+            ])
+            ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
+            ->when(isset($filter['category']), function ($q) use ($filter) {
+                $q->where('categories.name', 'like', '%' . $filter['category'] . '%');
+            })
+            ->when(isset($filter['sku']), function ($q) use ($filter) {
+                $q->where('products.SKU', 'like', '%' . $filter['sku'] . '%');
+            })
+            ->when(isset($filter['price']), function ($q) use ($filter) {
+                $q->where('products.price', $filter['price']);
+            })
+            ->when(isset($filter['price_range']), function ($q) use ($filter) {
+                $range = explode('-', $filter['price_range']);
+                if (count($range) === 2) {
+                    $q->whereBetween('products.price', [(float)$range[0], (float)$range[1]]);
+                }
+            })
+            ->when(isset($filter['created_date']), function ($q) use ($filter) {
+                $q->whereDate('products.created_at', $filter['created_date']);
+            })
+            ->when(isset($filter['created_date_range']), function ($q) use ($filter) {
+                $dates = explode(' to ', $filter['created_date_range']);
+                if (count($dates) === 2) {
+                    $q->whereBetween('products.created_at', [$dates[0], $dates[1]]);
+                }
+            })
+            ->when($query, function ($q) use ($query) {
+                $q->where(function ($subQuery) use ($query) {
+                    $subQuery->where('products.name', 'like', '%' . $query . '%')
+                              ->orWhere('products.description', 'like', '%' . $query . '%');
+                });
+            })
+            ->orderBy('products.created_at', 'desc')
+            ->paginate($limit);
     }
 
     public function show($model)
     {
-        return Product::find($model->id);
+        return Product::with('category')
+            ->select([
+                'products.id',
+                'products.SKU',
+                'products.name',
+                'products.description',
+                'categories.name as category_name',
+                'products.price',
+                'products.price_in_store_b',
+                'products.created_at'
+            ])
+            ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
+            ->find($model->id);
     }
 
+    
     public function save($model)
     {
         return Product::create($model);
@@ -36,6 +90,6 @@ class ProductRepository implements IProduct
 
     public function findById($id)
     {
-        return Product::find($id);
+        return Product::findOrFail($id);
     }
 }
